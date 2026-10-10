@@ -200,13 +200,17 @@ if (!SpeechRecognition) {
   micBtn.disabled = true;
   micBtn.title = "Voice input needs Chrome or Edge";
   micLabel.textContent = "Voice unavailable";
+  micBtn.setAttribute("aria-label", "Voice input unavailable in this browser");
   setStatus("Voice needs Chrome or Edge — the keypad works everywhere.");
 }
 
 function stopListening() {
   listening = false;
   micBtn.classList.remove("is-live");
-  if (SpeechRecognition) micLabel.textContent = "Say a sum";
+  if (SpeechRecognition) {
+    micLabel.textContent = "Say a sum";
+    micBtn.setAttribute("aria-label", "Say a sum");
+  }
   if (recognition) { try { recognition.abort(); } catch { /* already stopped */ } }
 }
 
@@ -225,6 +229,7 @@ function toggleListening() {
     listening = true;
     micBtn.classList.add("is-live");
     micLabel.textContent = "Listening — tap to stop";
+    micBtn.setAttribute("aria-label", "Listening. Activate to stop.");
     setStatus("Listening…", "listening");
   };
 

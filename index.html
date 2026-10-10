@@ -18,7 +18,10 @@
       <ol class="tape__list" id="tapelist"></ol>
     </section>
 
-    <output class="screen" id="screen">
+    <!-- Explicit live region: an <output> has an implicit one, but it is not
+         announced consistently across screen readers, and the result is the
+         one thing a user who cannot see the screen actually needs. -->
+    <output class="screen" id="screen" aria-live="polite" aria-atomic="true">
       <span class="screen__sub" id="sub" aria-hidden="true"></span>
       <span class="screen__main" id="display">0</span>
     </output>
@@ -26,7 +29,7 @@
     <p class="status" id="status" role="status" aria-live="polite"></p>
 
     <div class="voicebar">
-      <button class="micbar" data-key="mic" id="mic">
+      <button class="micbar" data-key="mic" id="mic" aria-label="Say a sum">
       <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
         <rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
         <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>

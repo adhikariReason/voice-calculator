@@ -21,6 +21,11 @@ Then open <http://localhost:8000>.
 
 ## Using it
 
+**Screen readers.** Every control carries a name, the keypad follows visual
+order under Tab, focus rings are visible, and the display is a polite live
+region so each result is announced as it appears. The history tape is a list of
+buttons, each naming its sum and what activating it does.
+
 **By tap or keyboard.** The keypad works on its own — voice is never required.
 It has the keys a phone calculator has: the four operations, `±`, `%`, a
 decimal point, clear and backspace.
