@@ -187,6 +187,28 @@ export function completedCalculation(before, after) {
   };
 }
 
+/**
+ * How the current display should be read aloud.
+ *
+ * Screen readers and speech engines handle plain digits well but mangle a
+ * leading hyphen and exponent notation, so both are spelled out. Returns a
+ * plain string; the caller decides whether anything is actually spoken.
+ */
+export function spokenResult(state) {
+  const shown = display(state);
+  if (state && state.error) return shown;          // error text already reads well
+
+  const exponent = shown.match(/^(-?[\d.]+)e(-?\d+)$/);
+  if (exponent) {
+    const [, mantissa, power] = exponent;
+    const spokenMantissa = mantissa.startsWith("-") ? `minus ${mantissa.slice(1)}` : mantissa;
+    return `${spokenMantissa} times ten to the ${power.startsWith("-") ? `minus ${power.slice(1)}` : power}`;
+  }
+
+  if (shown.startsWith("-")) return `minus ${shown.slice(1)}`;
+  return shown;
+}
+
 /** A fresh state showing one value, used when recalling a history entry. */
 export function fromValue(value) {
   const n = typeof value === "number" ? value : parseFloat(value);

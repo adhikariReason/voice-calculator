@@ -3,7 +3,7 @@
 
 import {
   initialState, digit, decimal, operator, equals, clear, backspace,
-  toggleSign, percent, completedCalculation, fromValue, display,
+  toggleSign, percent, completedCalculation, fromValue, spokenResult, display,
 } from "./calculator.js";
 import { parse } from "./parser.js";
 
@@ -16,6 +16,36 @@ const pad       = document.querySelector(".pad");
 const tapeEl    = document.getElementById("tape");
 const tapeList  = document.getElementById("tapelist");
 const tapeClear = document.getElementById("tapeclear");
+const speakBtn  = document.getElementById("speak");
+
+// --- spoken readback -----------------------------------------------------
+
+const synth = window.speechSynthesis;
+let speakResults = false;    // off by default; a calculator that talks unasked is a surprise
+
+if (!synth) {
+  speakBtn.disabled = true;
+  speakBtn.title = "This browser cannot speak results";
+}
+
+function speak(text) {
+  if (!speakResults || !synth || !text) return;
+  try {
+    synth.cancel();                       // never queue up a backlog of answers
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    synth.speak(utterance);
+  } catch {
+    // Speech is a convenience; losing it must never break the calculator.
+  }
+}
+
+speakBtn.addEventListener("click", () => {
+  if (!synth) return;
+  speakResults = !speakResults;
+  speakBtn.setAttribute("aria-pressed", String(speakResults));
+  if (!speakResults) synth.cancel();
+});
 
 /** Most recent last, like a paper tape. Bounded so a long session can't grow
     without limit. */
@@ -98,7 +128,11 @@ function applyKey(key) {
   else if (key === "~")                    state = toggleSign(state);
   else if (key === "%")                    state = percent(state);
   else return false;
-  if (key === "=") recordCalculation(before, state);
+  if (key === "=") {
+    recordCalculation(before, state);
+    // Only the result is worth hearing, not every keystroke.
+    if (before.pendingOp !== null || state.error) speak(spokenResult(state));
+  }
   render();
   return true;
 }
@@ -187,6 +221,7 @@ function toggleListening() {
   recognition.continuous = false;
 
   recognition.onstart = () => {
+    if (synth) synth.cancel();            // do not talk over the person speaking
     listening = true;
     micBtn.classList.add("is-live");
     micLabel.textContent = "Listening — tap to stop";

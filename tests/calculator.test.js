@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   initialState, digit, decimal, operator, equals, clear, backspace,
-  toggleSign, percent, completedCalculation, fromValue,
+  toggleSign, percent, completedCalculation, fromValue, spokenResult,
   display, apply, ERRORS, MAX_DIGITS,
 } from "../src/calculator.js";
 
@@ -345,4 +345,35 @@ test("fromValue rejects junk rather than showing NaN", () => {
   for (const junk of ["", "abc", NaN, Infinity, null, undefined, {}, []]) {
     assert.equal(display(fromValue(junk)), "0", `fromValue(${String(junk)})`);
   }
+});
+
+// --- spoken readback -----------------------------------------------------
+
+test("a plain result is spoken as it reads", () => {
+  assert.equal(spokenResult(run(["2", "+", "2", "="])), "4");
+  assert.equal(spokenResult(run([".", "1", "+", ".", "2", "="])), "0.3");
+});
+
+test("a negative result says minus rather than a stray hyphen", () => {
+  assert.equal(spokenResult(run(["3", "-", "8", "="])), "minus 5");
+});
+
+test("exponent notation is spelled out", () => {
+  const big = run(["9", ...Array(40).fill(["*", "9"]).flat(), "="]);
+  assert.match(spokenResult(big), /times ten to the \d+/);
+});
+
+test("a very small result spells a negative exponent", () => {
+  const small = run(["1", "/", "9", "9", "9", "9", "9", "9", "9", "9", "9", "9", "="]);
+  assert.match(spokenResult(small), /times ten to the minus \d+/);
+});
+
+test("an error is spoken as its message", () => {
+  assert.equal(spokenResult(run(["5", "/", "0", "="])), ERRORS.DIV_ZERO);
+});
+
+test("spokenResult never throws and always returns a string", () => {
+  const nasties = [initialState(), { ...initialState(), entry: "" },
+                   { ...initialState(), entry: "abc" }, { ...initialState(), entry: "1e999" }];
+  for (const s of nasties) assert.equal(typeof spokenResult(s), "string");
 });

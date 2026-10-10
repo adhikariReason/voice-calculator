@@ -208,12 +208,17 @@ body {
 
 /* Voice is a mode, not a calculator key, so it gets its own control rather
    than a slot in the grid. */
+.voicebar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .micbar {
   -webkit-appearance: none;
   appearance: none;
-  width: 100%;
+  flex: 1;
   min-height: 48px;
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -237,6 +242,38 @@ body {
 .micbar.is-live { background: var(--danger); animation: pulse 1.4s ease-in-out infinite; }
 
 @keyframes pulse { 50% { opacity: .62; } }
+
+/* Readback toggle. Off by default: a calculator that starts talking
+   unprompted would be a surprise, not a feature. */
+.speak {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 48px;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--ink-soft);
+  background: var(--fn);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.speak:hover { background: var(--fn-press); color: var(--ink); }
+.speak:focus-visible { outline: 2px solid var(--mic); outline-offset: 2px; }
+.speak[disabled] { opacity: .45; cursor: not-allowed; }
+.speak[disabled]:hover { background: var(--fn); color: var(--ink-soft); }
+
+.speak .speak__waves { display: none; }
+.speak[aria-pressed="true"] {
+  background: var(--mic);
+  color: #fff;
+  border-color: transparent;
+}
+.speak[aria-pressed="true"] .speak__waves { display: inline; }
+.speak[aria-pressed="true"] .speak__mute  { display: none; }
 
 /* --- keypad ------------------------------------------------------------- */
 

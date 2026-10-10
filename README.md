@@ -28,6 +28,14 @@ decimal point, clear and backspace.
 From a physical keyboard: digits, `.`, `+`, `-`, `*`, `/`, `%`, `n` (toggle
 sign), `Enter` (equals), `Backspace`, and `Esc` (clear).
 
+**Spoken results.** The speaker button beside the microphone reads each answer
+aloud, so a spoken sum can be done without looking at the screen. It is **off by
+default** — a calculator that starts talking unprompted is a surprise, not a
+feature — and the setting is not remembered between visits. Negative results are
+read as "minus five" rather than a stray hyphen, and errors are read out too. It
+needs the browser's speech synthesis; where that is missing the button is
+disabled and nothing else changes.
+
 **History.** Completed sums collect in a tape above the display. Tap any row to
 pull that result back into the display and keep working with it; `Clear` empties
 the tape. It holds the last 20 and is not written to disk, so it goes away when
@@ -74,7 +82,7 @@ connection; nothing else in this app does.
 
 ## How it was tested
 
-**Automated.** 94 tests covering the calculator state machine and the parser,
+**Automated.** 100 tests covering the calculator state machine and the parser,
 using Node's built-in test runner (Node 18+, no dependencies to install):
 
 ```bash
