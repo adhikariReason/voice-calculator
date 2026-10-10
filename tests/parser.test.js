@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse, tokenize, PARSE_ERRORS } from "../src/parser.js";
-import { initialState, digit, decimal, operator, equals, display } from "../src/calculator.js";
+import { initialState, digit, decimal, operator, equals, toggleSign, percent, display } from "../src/calculator.js";
 
 const keys = (t) => { const r = parse(t); assert.ok(r.ok, `expected "${t}" to parse, got: ${r.reason}`); return r.keys.join(" "); };
 const reject = (t) => { const r = parse(t); assert.equal(r.ok, false, `expected "${t}" to be rejected`); return r.reason; };
@@ -15,6 +15,8 @@ function evaluate(transcript) {
     if (/^[0-9]$/.test(k)) s = digit(s, k);
     else if (k === ".") s = decimal(s);
     else if (k === "=") s = equals(s);
+    else if (k === "~") s = toggleSign(s);
+    else if (k === "%") s = percent(s);
     else s = operator(s, k);
   }
   return display(s);
@@ -62,8 +64,8 @@ test("decimals by word", () => {
   assert.equal(evaluate("one point five plus one point five"), "3");
 });
 
-test("a leading minus is a negative first operand", () => {
-  assert.equal(keys("minus five plus ten"), "0 - 5 + 1 0 =");
+test("a leading minus presses the sign-toggle key, as a person would", () => {
+  assert.equal(keys("minus five plus ten"), "5 ~ + 1 0 =");
   assert.equal(evaluate("minus five plus ten"), "5");
 });
 
@@ -173,4 +175,63 @@ test("parse always returns a usable shape", () => {
 test("tokenize drops filler and splits glued operators", () => {
   assert.deepEqual(tokenize("two+two"), ["two", "+", "two"]);
   assert.deepEqual(tokenize("  TWO   plus  TWO  "), ["two", "plus", "two"]);
+});
+
+// --- voice parity with the keypad ----------------------------------------
+
+test("percent after a number presses the percent key", () => {
+  assert.equal(keys("fifty percent"), "5 0 % =");
+  assert.equal(evaluate("fifty percent"), "0.5");
+});
+
+test("percent follows phone semantics through the calculator", () => {
+  assert.equal(keys("two hundred plus ten percent"), "2 0 0 + 1 0 % =");
+  assert.equal(evaluate("two hundred plus ten percent"), "220");
+  assert.equal(evaluate("two hundred minus ten percent"), "180");
+});
+
+test("\"percentage\" is accepted as well", () => {
+  assert.equal(evaluate("fifty percentage"), "0.5");
+});
+
+test("repeated percent presses the key twice", () => {
+  assert.equal(keys("one hundred percent percent"), "1 0 0 % % =");
+  assert.equal(evaluate("one hundred percent percent"), "0.01");
+});
+
+test("negative is a synonym for a leading minus", () => {
+  assert.equal(keys("negative five plus ten"), "5 ~ + 1 0 =");
+  assert.equal(evaluate("negative five plus ten"), "5");
+});
+
+test("a negated second operand", () => {
+  assert.equal(keys("ten plus minus three"), "1 0 + 3 ~ =");
+  assert.equal(evaluate("ten plus minus three"), "7");
+  assert.equal(evaluate("ten plus negative three"), "7");
+});
+
+test("subtraction still parses as subtraction, not negation", () => {
+  assert.equal(keys("ten minus three"), "1 0 - 3 =");
+  assert.equal(evaluate("ten minus three"), "7");
+});
+
+test("percent with no number is refused clearly", () => {
+  assert.equal(reject("percent"), PARSE_ERRORS.DANGLING_PERCENT);
+  assert.equal(reject("two plus percent"), PARSE_ERRORS.DANGLING_PERCENT);
+});
+
+test("a bare negation word is refused", () => {
+  assert.equal(reject("negative"), PARSE_ERRORS.NO_NUMBER);
+  assert.equal(reject("minus"), PARSE_ERRORS.NO_NUMBER);
+});
+
+test("every emitted key is one the keypad actually has", () => {
+  const padKeys = new Set(["0","1","2","3","4","5","6","7","8","9",".","+","-","*","/","=","~","%","C","<"]);
+  for (const t of ["two plus two", "fifty percent", "negative five plus ten",
+                   "two hundred plus ten percent", "ten plus minus three",
+                   "three point one four", "one hundred percent percent"]) {
+    const r = parse(t);
+    assert.ok(r.ok, t);
+    for (const k of r.keys) assert.ok(padKeys.has(k), `key "${k}" from "${t}" is not on the keypad`);
+  }
 });

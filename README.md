@@ -43,13 +43,16 @@ work:
 | "three point one four plus one" | `3 . 1 4 + 1 =` |
 | "minus five plus ten" | `0 - 5 + 1 0 =` |
 | "one hundred twenty three plus one" | `1 2 3 + 1 =` |
-
-Voice currently covers numbers and the four operations. `±` and `%` are keypad
-keys only — say "minus five" for a negative operand.
+| "fifty percent" | `5 0 % =` |
+| "two hundred plus ten percent" | `2 0 0 + 1 0 % =` |
+| "ten plus negative three" | `1 0 + 3 ± =` |
 
 Synonyms are accepted (`x`, `times`, `multiplied by`; `over`, `divided by`),
 filler words are ignored ("um, what is two plus two please"), and common
 mishearings are mapped (`to`/`too` → two, `for` → four).
+
+Voice covers everything the keypad does except clear and backspace: speaking a
+new expression replaces what was there, so they are not needed.
 
 Anything it cannot read is refused with a reason, never guessed at: an unknown
 word is named back to you, a phrase ending on an operator is rejected, and
@@ -66,7 +69,7 @@ connection; nothing else in this app does.
 
 ## How it was tested
 
-**Automated.** 71 tests covering the calculator state machine and the parser,
+**Automated.** 81 tests covering the calculator state machine and the parser,
 using Node's built-in test runner (Node 18+, no dependencies to install):
 
 ```bash
@@ -76,7 +79,9 @@ node --test
 These cover the four operations, chaining, float tidying (`0.1 + 0.2` shows
 `0.3`), the 12-digit cap, divide by zero, overflow, backspace and clear
 behaviour, sign toggle and percent (including their interaction with a pending
-operator), purity of the state functions, and the parser's full vocabulary.
+operator), purity of the state functions, and the parser's full vocabulary. One
+test asserts that every key the parser can emit is a key the keypad actually
+has, so voice and tap cannot drift apart.
 
 **Hostile input.** Every input is treated as hostile. The suite and a manual
 in-browser battery cover: empty and whitespace-only speech, unknown words,

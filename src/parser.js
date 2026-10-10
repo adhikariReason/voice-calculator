@@ -38,11 +38,18 @@ const FILLER = new Set(["by", "and", "the", "a", "um", "uh", "please", "is", "eq
 
 const POINT = new Set(["point", "dot", "decimal"]);
 
+// Suffix words that press a key after a number rather than introducing one.
+const PERCENT = new Set(["percent", "percentage"]);
+
+// Words that negate the number that follows, pressing the sign-toggle key.
+const NEGATE = new Set(["negative", "minus"]);
+
 export const PARSE_ERRORS = {
   EMPTY: "I didn't catch anything. Try again.",
   NO_NUMBER: "I didn't hear a number.",
   UNKNOWN_WORD: (w) => `I don't know the word "${w}".`,
   NEEDS_OPERATOR: "Say something like \"two plus two\".",
+  DANGLING_PERCENT: "I heard \"percent\" without a number.",
   TRAILING_OPERATOR: "That ended on an operator.",
   TOO_LONG: "That was too long to process.",
   TOO_MANY_DIGITS: "That number has too many digits.",
@@ -127,6 +134,13 @@ function takeNumber(tokens) {
   return { value: out, rest: tokens.slice(i) };
 }
 
+/** Consume any run of "percent" words, pressing % for each. */
+function takePercent(tokens, keys) {
+  let i = 0;
+  while (i < tokens.length && PERCENT.has(tokens[i])) { keys.push("%"); i++; }
+  return tokens.slice(i);
+}
+
 /** Turn a numeric string into individual key presses. */
 function keysFor(numStr) {
   return numStr.split("").filter((c) => /[0-9.]/.test(c));
@@ -147,20 +161,27 @@ export function parse(transcript) {
   const keys = [];
   let rest = tokens;
 
-  // Leading "minus five" is a negative first operand: 0 - 5.
-  if (OPERATORS[rest[0]] === "-") {
-    keys.push("0", "-");
+  // "minus five" / "negative five" is a negative first operand. Now that the
+  // keypad has a sign-toggle key, press what a person would press: 5 then +/-.
+  let negateFirst = false;
+  if (NEGATE.has(rest[0])) {
+    negateFirst = true;
     rest = rest.slice(1);
   }
+
+  if (rest.length === 0) return { ok: false, reason: PARSE_ERRORS.NO_NUMBER };
 
   const first = takeNumber(rest);
   if (first === null) {
     const w = rest[0];
+    if (PERCENT.has(w)) return { ok: false, reason: PARSE_ERRORS.DANGLING_PERCENT };
     return { ok: false, reason: OPERATORS[w] ? PARSE_ERRORS.NEEDS_OPERATOR : PARSE_ERRORS.UNKNOWN_WORD(w) };
   }
   if (first.error) return { ok: false, reason: first.error };
   keys.push(...keysFor(first.value));
+  if (negateFirst) keys.push("~");
   rest = first.rest;
+  rest = takePercent(rest, keys);
 
   // Then zero or more (operator, number) pairs.
   while (rest.length > 0) {
@@ -170,14 +191,22 @@ export function parse(transcript) {
     rest = rest.slice(1);
     if (rest.length === 0) return { ok: false, reason: PARSE_ERRORS.TRAILING_OPERATOR };
 
+    // "minus" doubles as a negation here: "ten plus minus three".
+    let negate = false;
+    if (NEGATE.has(rest[0]) && OPERATORS[rest[0]] !== op) { negate = true; rest = rest.slice(1); }
+    if (rest.length === 0) return { ok: false, reason: PARSE_ERRORS.TRAILING_OPERATOR };
+
     const next = takeNumber(rest);
     if (next === null) {
       const w = rest[0];
+      if (PERCENT.has(w)) return { ok: false, reason: PARSE_ERRORS.DANGLING_PERCENT };
       return { ok: false, reason: OPERATORS[w] ? PARSE_ERRORS.NEEDS_OPERATOR : PARSE_ERRORS.UNKNOWN_WORD(w) };
     }
     if (next.error) return { ok: false, reason: next.error };
     keys.push(op, ...keysFor(next.value));
+    if (negate) keys.push("~");
     rest = next.rest;
+    rest = takePercent(rest, keys);
   }
 
   keys.push("=");
