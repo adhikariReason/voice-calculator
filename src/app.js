@@ -3,7 +3,7 @@
 
 import {
   initialState, digit, decimal, operator, equals, clear, backspace,
-  toggleSign, percent, display,
+  toggleSign, percent, completedCalculation, fromValue, display,
 } from "./calculator.js";
 import { parse } from "./parser.js";
 
@@ -13,6 +13,14 @@ const statusEl  = document.getElementById("status");
 const micBtn    = document.getElementById("mic");
 const micLabel  = document.getElementById("miclabel");
 const pad       = document.querySelector(".pad");
+const tapeEl    = document.getElementById("tape");
+const tapeList  = document.getElementById("tapelist");
+const tapeClear = document.getElementById("tapeclear");
+
+/** Most recent last, like a paper tape. Bounded so a long session can't grow
+    without limit. */
+const HISTORY_LIMIT = 20;
+let history = [];
 
 let state = initialState();
 let replaying = false;      // true while a spoken sequence is being pressed
@@ -35,6 +43,42 @@ function render() {
   }
 }
 
+function renderHistory() {
+  tapeEl.hidden = history.length === 0;
+  tapeList.replaceChildren();
+
+  history.forEach((item, index) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "tape__row";
+    row.dataset.index = String(index);
+    row.setAttribute("aria-label", `${item.expression} equals ${item.result}. Use this result.`);
+
+    const expr = document.createElement("span");
+    expr.className = "tape__expr";
+    expr.textContent = item.expression;          // textContent, never innerHTML
+
+    const result = document.createElement("span");
+    result.className = "tape__result";
+    result.textContent = item.result;
+
+    row.append(expr, result);
+    const entry = document.createElement("li");
+    entry.append(row);
+    tapeList.append(entry);
+  });
+
+  tapeList.scrollTop = tapeList.scrollHeight;    // keep the newest in view
+}
+
+function recordCalculation(before, after) {
+  const item = completedCalculation(before, after);
+  if (!item) return;
+  history.push(item);
+  if (history.length > HISTORY_LIMIT) history = history.slice(-HISTORY_LIMIT);
+  renderHistory();
+}
+
 function setStatus(message, kind = "") {
   statusEl.textContent = message;
   statusEl.className = "status" + (kind ? ` is-${kind}` : "");
@@ -44,6 +88,7 @@ function setStatus(message, kind = "") {
 
 /** Apply one key to the state. The single place keys turn into actions. */
 function applyKey(key) {
+  const before = state;
   if (/^[0-9]$/.test(key))                 state = digit(state, key);
   else if (key === ".")                    state = decimal(state);
   else if (["+", "-", "*", "/"].includes(key)) state = operator(state, key);
@@ -53,6 +98,7 @@ function applyKey(key) {
   else if (key === "~")                    state = toggleSign(state);
   else if (key === "%")                    state = percent(state);
   else return false;
+  if (key === "=") recordCalculation(before, state);
   render();
   return true;
 }
@@ -77,6 +123,22 @@ pad.addEventListener("click", (event) => {
 });
 
 micBtn.addEventListener("click", () => toggleListening());
+
+tapeList.addEventListener("click", (event) => {
+  const row = event.target.closest(".tape__row");
+  if (!row || replaying) return;
+  const item = history[Number(row.dataset.index)];
+  if (!item) return;
+  state = fromValue(item.result);
+  render();
+  setStatus("");
+});
+
+tapeClear.addEventListener("click", () => {
+  if (replaying) return;
+  history = [];
+  renderHistory();
+});
 
 // Physical keyboard, for anyone not on a touchscreen.
 window.addEventListener("keydown", (event) => {
@@ -215,3 +277,4 @@ async function pressSequence(keys, heard) {
 }
 
 render();
+renderHistory();

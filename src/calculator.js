@@ -157,6 +157,43 @@ export function apply(a, b, op) {
   return { value };
 }
 
+/** How each operator is written in the history tape. */
+const OPERATOR_SYMBOLS = { "+": "+", "-": "\u2212", "*": "\u00d7", "/": "\u00f7" };
+
+/**
+ * Describe the calculation that `equals` just completed, for the history tape.
+ *
+ * Built from the state either side of the press rather than from a log of
+ * keystrokes: the state is exactly what was computed, where a replayed key log
+ * only approximates it once backspace is involved.
+ *
+ * Returns null when nothing was actually computed (a bare "5 =", or an error).
+ */
+export function completedCalculation(before, after) {
+  if (!before || !after) return null;
+  if (after.error || before.error) return null;
+  if (before.pendingOp === null || before.accumulator === null) return null;
+
+  const symbol = OPERATOR_SYMBOLS[before.pendingOp];
+  if (!symbol) return null;
+
+  const left = tidy(before.accumulator);
+  const right = tidy(parseFloat(before.entry));
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+
+  return {
+    expression: `${left} ${symbol} ${right}`,
+    result: display(after),
+  };
+}
+
+/** A fresh state showing one value, used when recalling a history entry. */
+export function fromValue(value) {
+  const n = typeof value === "number" ? value : parseFloat(value);
+  if (!Number.isFinite(n)) return initialState();
+  return { ...initialState(), entry: String(tidy(n)), replaceEntry: true };
+}
+
 /** What the display shows for a given state. Always a string, never throws. */
 export function display(state) {
   if (state.error) return state.error;

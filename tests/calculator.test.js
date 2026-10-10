@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   initialState, digit, decimal, operator, equals, clear, backspace,
-  toggleSign, percent, display, apply, ERRORS, MAX_DIGITS,
+  toggleSign, percent, completedCalculation, fromValue,
+  display, apply, ERRORS, MAX_DIGITS,
 } from "../src/calculator.js";
 
 /** Drive the calculator with a compact script, as the UI/voice layers do. */
@@ -257,4 +258,91 @@ test("new actions are pure too", () => {
   const frozen = JSON.stringify(s);
   toggleSign(s); percent(s);
   assert.equal(JSON.stringify(s), frozen);
+});
+
+// --- history tape --------------------------------------------------------
+
+/** Run a script, returning the state just before the final key and just after. */
+function aroundLast(seq) {
+  const before = run(seq.slice(0, -1));
+  const after = run(seq);
+  return [before, after];
+}
+
+test("a completed calculation describes what was computed", () => {
+  const [b, a] = aroundLast(["2", "+", "2", "="]);
+  assert.deepEqual(completedCalculation(b, a), { expression: "2 + 2", result: "4" });
+});
+
+test("each operator gets its proper symbol", () => {
+  assert.equal(completedCalculation(...aroundLast(["9", "-", "4", "="])).expression, "9 \u2212 4");
+  assert.equal(completedCalculation(...aroundLast(["6", "*", "7", "="])).expression, "6 \u00d7 7");
+  assert.equal(completedCalculation(...aroundLast(["8", "/", "2", "="])).expression, "8 \u00f7 2");
+});
+
+test("a chained sum records the step that equals actually completed", () => {
+  // 2 + 3 makes 5, then * 4: the completed step is 5 x 4.
+  const [b, a] = aroundLast(["2", "+", "3", "*", "4", "="]);
+  assert.deepEqual(completedCalculation(b, a), { expression: "5 \u00d7 4", result: "20" });
+});
+
+test("nothing is recorded when nothing was computed", () => {
+  assert.equal(completedCalculation(...aroundLast(["5", "="])), null);
+  assert.equal(completedCalculation(...aroundLast(["="])), null);
+});
+
+test("an error is not recorded as a calculation", () => {
+  assert.equal(completedCalculation(...aroundLast(["5", "/", "0", "="])), null);
+});
+
+test("a negated or percentage operand is recorded as the number used", () => {
+  assert.equal(completedCalculation(...aroundLast(["5", "+", "3", "~", "="])).expression, "5 + -3");
+  assert.equal(completedCalculation(...aroundLast(["2", "0", "0", "+", "1", "0", "%", "="])).expression, "200 + 20");
+});
+
+test("float noise does not leak into the recorded expression", () => {
+  const [b, a] = aroundLast([".", "1", "+", ".", "2", "="]);
+  assert.deepEqual(completedCalculation(b, a), { expression: "0.1 + 0.2", result: "0.3" });
+});
+
+test("completedCalculation is defensive about junk", () => {
+  assert.equal(completedCalculation(null, null), null);
+  assert.equal(completedCalculation(undefined, initialState()), null);
+  assert.equal(completedCalculation(initialState(), undefined), null);
+  assert.equal(completedCalculation({}, {}), null);
+});
+
+test("completedCalculation does not mutate either state", () => {
+  const [b, a] = aroundLast(["2", "+", "2", "="]);
+  const frozen = [JSON.stringify(b), JSON.stringify(a)];
+  completedCalculation(b, a);
+  assert.deepEqual([JSON.stringify(b), JSON.stringify(a)], frozen);
+});
+
+// --- recall --------------------------------------------------------------
+
+test("fromValue produces a clean state showing that value", () => {
+  const s = fromValue("42");
+  assert.equal(display(s), "42");
+  assert.equal(s.pendingOp, null);
+  assert.equal(s.accumulator, null);
+  assert.equal(s.error, null);
+});
+
+test("a recalled value can be used straight away", () => {
+  let s = fromValue("42");
+  s = operator(s, "+"); s = digit(s, "8"); s = equals(s);
+  assert.equal(display(s), "50");
+});
+
+test("a recalled value is replaced by the next digit, not appended to", () => {
+  let s = fromValue("42");
+  s = digit(s, "7");
+  assert.equal(display(s), "7");
+});
+
+test("fromValue rejects junk rather than showing NaN", () => {
+  for (const junk of ["", "abc", NaN, Infinity, null, undefined, {}, []]) {
+    assert.equal(display(fromValue(junk)), "0", `fromValue(${String(junk)})`);
+  }
 });

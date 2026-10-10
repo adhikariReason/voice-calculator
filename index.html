@@ -10,6 +10,14 @@
 <body>
   <main class="calc" aria-label="Calculator">
 
+    <section class="tape" id="tape" hidden aria-label="Calculation history">
+      <div class="tape__head">
+        <span class="tape__title">History</span>
+        <button class="tape__clear" id="tapeclear" type="button">Clear</button>
+      </div>
+      <ol class="tape__list" id="tapelist"></ol>
+    </section>
+
     <output class="screen" id="screen">
       <span class="screen__sub" id="sub" aria-hidden="true"></span>
       <span class="screen__main" id="display">0</span>

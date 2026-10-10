@@ -28,6 +28,11 @@ decimal point, clear and backspace.
 From a physical keyboard: digits, `.`, `+`, `-`, `*`, `/`, `%`, `n` (toggle
 sign), `Enter` (equals), `Backspace`, and `Esc` (clear).
 
+**History.** Completed sums collect in a tape above the display. Tap any row to
+pull that result back into the display and keep working with it; `Clear` empties
+the tape. It holds the last 20 and is not written to disk, so it goes away when
+you close the page.
+
 `%` behaves the way phone calculators do rather than the way a plain division
 would: with a pending `+` or `-` it takes that percentage *of the running
 total*, so `200 + 10 % =` gives `220`. With `×` or `÷` it is simply a division
@@ -69,7 +74,7 @@ connection; nothing else in this app does.
 
 ## How it was tested
 
-**Automated.** 81 tests covering the calculator state machine and the parser,
+**Automated.** 94 tests covering the calculator state machine and the parser,
 using Node's built-in test runner (Node 18+, no dependencies to install):
 
 ```bash
@@ -81,7 +86,9 @@ These cover the four operations, chaining, float tidying (`0.1 + 0.2` shows
 behaviour, sign toggle and percent (including their interaction with a pending
 operator), purity of the state functions, and the parser's full vocabulary. One
 test asserts that every key the parser can emit is a key the keypad actually
-has, so voice and tap cannot drift apart.
+has, so voice and tap cannot drift apart. The history tape's record is built
+from the calculator state either side of `=`, so it is also covered by those
+tests rather than by reconstructing keystrokes.
 
 **Hostile input.** Every input is treated as hostile. The suite and a manual
 in-browser battery cover: empty and whitespace-only speech, unknown words,
@@ -101,7 +108,7 @@ overflow.
 ```
 index.html          markup
 styles.css          one type scale, one spacing scale, light + dark tokens
-src/calculator.js   pure state machine: no DOM, no eval
+src/calculator.js   pure state machine: no DOM, no eval, plus the history record
 src/parser.js       transcript -> key sequence: fixed word table + grammar
 src/app.js          wiring: keypad, keyboard, speech, visible press replay
 tests/              node --test
