@@ -123,6 +123,40 @@ body {
 .status.is-listening { color: var(--mic); }
 .status.is-error     { color: var(--danger); }
 
+/* --- voice bar ---------------------------------------------------------- */
+
+/* Voice is a mode, not a calculator key, so it gets its own control rather
+   than a slot in the grid. */
+.micbar {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 15px;
+  color: #fff;
+  background: var(--mic);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease-out, transform 90ms ease-out;
+}
+.micbar:hover  { background: var(--mic-press); }
+.micbar:active { background: var(--mic-press); transform: scale(.99); }
+.micbar:focus-visible { outline: 2px solid var(--mic); outline-offset: 2px; }
+.micbar[disabled] { opacity: .45; cursor: not-allowed; }
+.micbar[disabled]:hover { background: var(--mic); }
+.micbar.is-live { background: var(--danger); animation: pulse 1.4s ease-in-out infinite; }
+
+@keyframes pulse { 50% { opacity: .62; } }
+
 /* --- keypad ------------------------------------------------------------- */
 
 .pad {
@@ -170,24 +204,10 @@ body {
 .key--eq:hover   { background: var(--accent-press); }
 .key--eq:active, .key--eq.is-pressed { background: var(--accent-press); }
 
-.key--mic        { background: var(--mic); color: #fff; border-color: transparent; }
-.key--mic:hover  { background: var(--mic-press); }
-.key--mic:active, .key--mic.is-pressed { background: var(--mic-press); }
-.key--mic[disabled] { opacity: .45; cursor: not-allowed; }
-.key--mic[disabled]:hover { background: var(--mic); }
-
-.key--mic.is-live {
-  background: var(--danger);
-  animation: pulse 1.4s ease-in-out infinite;
-}
-@keyframes pulse { 50% { opacity: .62; } }
-
-.key--wide       { grid-column: span 2; }
-
 /* Voice replay drives .is-pressed in sequence; honour the OS preference by
    dropping the movement but keeping the colour change visible. */
 @media (prefers-reduced-motion: reduce) {
   .key { transition: background-color 120ms ease-out; }
   .key:active, .key.is-pressed { transform: none; }
-  .key--mic.is-live { animation: none; }
+  .micbar.is-live { animation: none; }
 }

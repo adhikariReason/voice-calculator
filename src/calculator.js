@@ -111,6 +111,33 @@ export function backspace(state) {
   return { ...state, entry: trimmed };
 }
 
+/** Flip the sign of the current entry, as the +/- key on a phone does. */
+export function toggleSign(state) {
+  if (state.error) return state;
+  if (state.entry === "0" || state.entry === "0.") return state;   // -0 is not a thing
+  const entry = state.entry.startsWith("-") ? state.entry.slice(1) : "-" + state.entry;
+  return { ...state, entry, replaceEntry: false };
+}
+
+/**
+ * The percent key, with the behaviour phone calculators actually have:
+ * with a pending + or -, the entry becomes that percentage OF the accumulator
+ * (200 + 10% = 220). Otherwise it is simply divided by a hundred.
+ */
+export function percent(state) {
+  if (state.error) return state;
+  const current = parseFloat(state.entry);
+  if (!Number.isFinite(current)) return state;
+
+  const base = (state.pendingOp === "+" || state.pendingOp === "-") && state.accumulator !== null
+    ? (state.accumulator * current) / 100
+    : current / 100;
+
+  const value = tidy(base);
+  if (!Number.isFinite(value)) return { ...initialState(), error: ERRORS.OVERFLOW };
+  return { ...state, entry: String(value), replaceEntry: false };
+}
+
 /** The arithmetic itself. Returns {value} or {error}. */
 export function apply(a, b, op) {
   if (!Number.isFinite(a) || !Number.isFinite(b)) return { error: ERRORS.UNDEFINED };

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   initialState, digit, decimal, operator, equals, clear, backspace,
-  display, apply, ERRORS, MAX_DIGITS,
+  toggleSign, percent, display, apply, ERRORS, MAX_DIGITS,
 } from "../src/calculator.js";
 
 /** Drive the calculator with a compact script, as the UI/voice layers do. */
@@ -15,6 +15,8 @@ function run(seq) {
     else if (k === "=") s = equals(s);
     else if (k === "C") s = clear(s);
     else if (k === "<") s = backspace(s);
+    else if (k === "~") s = toggleSign(s);
+    else if (k === "%") s = percent(s);
     else throw new Error(`bad key in test script: ${k}`);
   }
   return s;
@@ -175,4 +177,84 @@ test("display never throws, whatever the state", () => {
     { ...initialState(), entry: "1e999" },
   ];
   for (const s of nasties) assert.equal(typeof display(s), "string");
+});
+
+// --- sign toggle ---------------------------------------------------------
+
+test("sign toggle flips a positive entry and back", () => {
+  assert.equal(shows(["5", "~"]), "-5");
+  assert.equal(shows(["5", "~", "~"]), "5");
+});
+
+test("sign toggle leaves zero alone (there is no negative zero)", () => {
+  assert.equal(shows(["~"]), "0");
+  assert.equal(shows(["0", "~"]), "0");
+  assert.equal(shows(["C", "~", "~"]), "0");
+});
+
+test("a negated entry still computes correctly", () => {
+  assert.equal(shows(["5", "~", "+", "3", "="]), "-2");
+  assert.equal(shows(["6", "*", "7", "~", "="]), "-42");
+  assert.equal(shows(["8", "~", "/", "2", "~", "="]), "4");
+});
+
+test("digits append to a negated entry rather than restarting it", () => {
+  assert.equal(shows(["5", "~", "2"]), "-52");
+});
+
+test("backspace works through a negated entry without leaving a bare minus", () => {
+  assert.equal(shows(["5", "~", "<"]), "0");
+  assert.equal(shows(["5", "2", "~", "<"]), "-5");
+});
+
+test("sign toggle is ignored during an error", () => {
+  assert.equal(run(["5", "/", "0", "=", "~"]).error, ERRORS.DIV_ZERO);
+});
+
+test("sign toggle on a decimal entry", () => {
+  assert.equal(shows(["1", ".", "5", "~"]), "-1.5");
+});
+
+// --- percent -------------------------------------------------------------
+
+test("percent of a standalone number divides by a hundred", () => {
+  assert.equal(shows(["5", "0", "%"]), "0.5");
+  assert.equal(shows(["8", "%"]), "0.08");
+});
+
+test("percent with a pending add takes a percentage of the accumulator", () => {
+  assert.equal(shows(["2", "0", "0", "+", "1", "0", "%"]), "20");
+  assert.equal(shows(["2", "0", "0", "+", "1", "0", "%", "="]), "220");
+});
+
+test("percent with a pending subtract behaves the same way", () => {
+  assert.equal(shows(["2", "0", "0", "-", "1", "0", "%", "="]), "180");
+});
+
+test("percent with multiply or divide is a plain division by a hundred", () => {
+  assert.equal(shows(["2", "0", "0", "*", "1", "0", "%", "="]), "20");
+  assert.equal(shows(["2", "0", "0", "/", "5", "0", "%", "="]), "400");
+});
+
+test("percent is ignored during an error", () => {
+  assert.equal(run(["5", "/", "0", "=", "%"]).error, ERRORS.DIV_ZERO);
+});
+
+test("percent of zero is zero, not an error", () => {
+  assert.equal(shows(["0", "%"]), "0");
+});
+
+test("repeated percent keeps dividing", () => {
+  assert.equal(shows(["1", "0", "0", "%", "%"]), "0.01");
+});
+
+test("percent and sign toggle compose", () => {
+  assert.equal(shows(["5", "0", "~", "%"]), "-0.5");
+});
+
+test("new actions are pure too", () => {
+  const s = run(["2", "0", "0", "+", "1", "0"]);
+  const frozen = JSON.stringify(s);
+  toggleSign(s); percent(s);
+  assert.equal(JSON.stringify(s), frozen);
 });

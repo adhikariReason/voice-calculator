@@ -2,7 +2,8 @@
 // calculator — it presses the same buttons, one at a time, visibly.
 
 import {
-  initialState, digit, decimal, operator, equals, clear, backspace, display,
+  initialState, digit, decimal, operator, equals, clear, backspace,
+  toggleSign, percent, display,
 } from "./calculator.js";
 import { parse } from "./parser.js";
 
@@ -10,6 +11,7 @@ const screenEl  = document.getElementById("display");
 const subEl     = document.getElementById("sub");
 const statusEl  = document.getElementById("status");
 const micBtn    = document.getElementById("mic");
+const micLabel  = document.getElementById("miclabel");
 const pad       = document.querySelector(".pad");
 
 let state = initialState();
@@ -48,6 +50,8 @@ function applyKey(key) {
   else if (key === "=")                    state = equals(state);
   else if (key === "C")                    state = clear(state);
   else if (key === "<")                    state = backspace(state);
+  else if (key === "~")                    state = toggleSign(state);
+  else if (key === "%")                    state = percent(state);
   else return false;
   render();
   return true;
@@ -68,21 +72,21 @@ function flash(key, holdMs) {
 pad.addEventListener("click", (event) => {
   const btn = event.target.closest(".key");
   if (!btn) return;
-  const key = btn.dataset.key;
-  if (key === "mic") { toggleListening(); return; }
   if (replaying) return;            // ignore taps mid-replay
-  if (applyKey(key)) setStatus("");
+  if (applyKey(btn.dataset.key)) setStatus("");
 });
+
+micBtn.addEventListener("click", () => toggleListening());
 
 // Physical keyboard, for anyone not on a touchscreen.
 window.addEventListener("keydown", (event) => {
   if (replaying) return;
   const map = {
     Enter: "=", "=": "=", Backspace: "<", Delete: "C", Escape: "C",
-    c: "C", C: "C", x: "*", X: "*",
+    c: "C", C: "C", x: "*", X: "*", n: "~", N: "~",
   };
   const key = map[event.key] ?? event.key;
-  if (/^[0-9.+\-*/=]$/.test(key) || ["C", "<"].includes(key)) {
+  if (/^[0-9.+\-*/=%]$/.test(key) || ["C", "<", "~"].includes(key)) {
     event.preventDefault();
     applyKey(key);
     flash(key, 90);
@@ -99,13 +103,14 @@ let listening = false;
 if (!SpeechRecognition) {
   micBtn.disabled = true;
   micBtn.title = "Voice input needs Chrome or Edge";
+  micLabel.textContent = "Voice unavailable";
   setStatus("Voice needs Chrome or Edge — the keypad works everywhere.");
 }
 
 function stopListening() {
   listening = false;
   micBtn.classList.remove("is-live");
-  micBtn.setAttribute("aria-label", "Speak an expression");
+  if (SpeechRecognition) micLabel.textContent = "Say a sum";
   if (recognition) { try { recognition.abort(); } catch { /* already stopped */ } }
 }
 
@@ -122,7 +127,7 @@ function toggleListening() {
   recognition.onstart = () => {
     listening = true;
     micBtn.classList.add("is-live");
-    micBtn.setAttribute("aria-label", "Stop listening");
+    micLabel.textContent = "Listening — tap to stop";
     setStatus("Listening…", "listening");
   };
 

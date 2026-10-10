@@ -22,8 +22,16 @@ Then open <http://localhost:8000>.
 ## Using it
 
 **By tap or keyboard.** The keypad works on its own — voice is never required.
-Digits, `.`, `+`, `-`, `*`, `/`, `Enter` (equals), `Backspace`, and `Esc`
-(clear) all work from a physical keyboard.
+It has the keys a phone calculator has: the four operations, `±`, `%`, a
+decimal point, clear and backspace.
+
+From a physical keyboard: digits, `.`, `+`, `-`, `*`, `/`, `%`, `n` (toggle
+sign), `Enter` (equals), `Backspace`, and `Esc` (clear).
+
+`%` behaves the way phone calculators do rather than the way a plain division
+would: with a pending `+` or `-` it takes that percentage *of the running
+total*, so `200 + 10 % =` gives `220`. With `×` or `÷` it is simply a division
+by a hundred, so `200 × 10 % =` gives `20`.
 
 **By voice.** Press the blue microphone and speak an expression. Examples that
 work:
@@ -35,6 +43,9 @@ work:
 | "three point one four plus one" | `3 . 1 4 + 1 =` |
 | "minus five plus ten" | `0 - 5 + 1 0 =` |
 | "one hundred twenty three plus one" | `1 2 3 + 1 =` |
+
+Voice currently covers numbers and the four operations. `±` and `%` are keypad
+keys only — say "minus five" for a negative operand.
 
 Synonyms are accepted (`x`, `times`, `multiplied by`; `over`, `divided by`),
 filler words are ignored ("um, what is two plus two please"), and common
@@ -55,7 +66,7 @@ connection; nothing else in this app does.
 
 ## How it was tested
 
-**Automated.** 55 tests covering the calculator state machine and the parser,
+**Automated.** 71 tests covering the calculator state machine and the parser,
 using Node's built-in test runner (Node 18+, no dependencies to install):
 
 ```bash
@@ -64,7 +75,8 @@ node --test
 
 These cover the four operations, chaining, float tidying (`0.1 + 0.2` shows
 `0.3`), the 12-digit cap, divide by zero, overflow, backspace and clear
-behaviour, purity of the state functions, and the parser's full vocabulary.
+behaviour, sign toggle and percent (including their interaction with a pending
+operator), purity of the state functions, and the parser's full vocabulary.
 
 **Hostile input.** Every input is treated as hostile. The suite and a manual
 in-browser battery cover: empty and whitespace-only speech, unknown words,
